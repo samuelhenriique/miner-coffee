@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lanchinho Miner</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header com Logo -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <img src="images.png" alt="Logo Lanchinho Miner">
+                </div>
+                <div class="logo-text">
+                    <h1>Lanchinho Miner</h1>
+                    <p class="subtitle">Sistema de Rotação do Café</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navegação de Mês -->
+        <div class="month-navigation">
+            <button class="nav-button" id="prev-month">
+                ← Mês Anterior
+            </button>
+            
+            <div class="current-month">
+                <h2 id="month-display">Agosto De 2025</h2>
+                <div class="sextas-count" id="sextas-count">0 sextas-feiras</div>
+                <input type="month" id="month-year" style="display:none;">
+            </div>
+            
+            <button class="nav-button" id="next-month">
+                Próximo Mês →
+            </button>
+        </div>
+
+        <div class="main-content">
+            <!-- Sidebar Esquerda -->
+            <aside class="sidebar">
+                <!-- Adicionar Participante -->
+                <section class="section">
+                    <div class="section-header">
+                        <span class="section-icon"><i class="fas fa-user-plus"></i></span>
+                        <h3 class="section-title">Adicionar Participante</h3>
+                    </div>
+                    
+                    <div class="section-content">
+                        <form id="add-person-form" class="add-participant-form">
+                            <div class="form-group">
+                                <input type="text" id="person-name" placeholder="Nome do participante" required>
+                            </div>
+                            <button type="submit" class="btn-add">
+                                <i class="fas fa-user-plus"></i> Adicionar
+                            </button>
+                        </form>
+                        
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="add-to-existing" checked>
+                            <label for="add-to-existing">Adicionar aos grupos já existentes</label>
+                        </div>
+                        
+                        <div id="date-selection" style="display: none;">
+                            <p>Escolha as datas específicas:</p>
+                            <div id="available-dates"></div>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="select-all-dates">
+                                <label for="select-all-dates">Selecionar todas as datas</label>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Participantes -->
+                <section class="section">
+                    <div class="section-header">
+                        <div class="participants-header">
+                            <div class="section-title-with-icon">
+                                <span class="section-icon"><i class="fas fa-users"></i></span>
+                                <h3 class="section-title">Participantes</h3>
+                            </div>
+                            <span class="participant-count" id="participants-count">0 ativos</span>
+                        </div>
+                    </div>
+                    
+                    <div class="section-content">
+                        <ul class="participants-list" id="people-list">
+                            <!-- Lista de participantes será carregada aqui -->
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Configurações -->
+                <section class="section">
+                    <div class="section-header">
+                        <span class="section-icon">⚙️</span>
+                        <h3 class="section-title">Configurações</h3>
+                    </div>
+                    
+                    <div class="section-content">
+                        <!-- Tipo de Formação de Grupos -->
+                        <div class="config-group">
+                            <label class="config-label">Formação dos Grupos</label>
+                            <div class="group-formation-options">
+                                <label class="radio-option">
+                                    <input type="radio" name="group-formation" value="single" id="single-group">
+                                    <span class="radio-text">
+                                        <strong>Grupo Único</strong>
+                                        <small>Todos juntos em um só grupo</small>
+                                    </span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="group-formation" value="multiple" id="multiple-groups" checked>
+                                    <span class="radio-text">
+                                        <strong>Grupo por Sexta</strong>
+                                        <small>Um grupo de tamanho específico por sexta-feira</small>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Tamanho do Grupo (só aparece quando múltiplos grupos) -->
+                        <div class="config-group" id="group-size-config">
+                            <label class="config-label">Um grupo de <span id="group-size-display">3</span> pessoas por sexta-feira</label>
+                            <div class="size-options">
+                                <button class="size-btn" data-size="2">2</button>
+                                <button class="size-btn selected" data-size="3">3</button>
+                                <button class="size-btn" data-size="4">4</button>
+                                <button class="size-btn" data-size="5">5</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </aside>
+
+            <!-- Área Principal dos Grupos -->
+            <main class="content-area">
+                <div class="content-header">
+                    <h2 class="content-title">
+                        Grupos do Mês
+                    </h2>
+                    <button class="btn-generate" id="generate-groups">
+                        Gerar Grupos
+                    </button>
+                </div>
+                
+                <div class="content-body" id="groups-display">
+                    <div class="empty-state">
+                        <h3>Nenhum grupo gerado ainda</h3>
+                        <p>Clique em "Gerar Grupos" para criar os grupos deste mês</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2025 Samuel H. - Todos os direitos reservados</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
