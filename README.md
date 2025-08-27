@@ -299,3 +299,5 @@ Permission is hereby granted, free of charge, to any person obtaining a copy...
 **© 2025 Samuel H. - Todos os direitos reservados**
 
 *Desenvolvido para organizar o café da sexta-feira com tecnologia moderna e design profissional!*
+
+# miner-coffee
