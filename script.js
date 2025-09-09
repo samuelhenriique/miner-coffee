@@ -13,6 +13,7 @@ class ModernLanchinhoMiner {
         this.setCurrentMonth();
         this.updateParticipantsCount();
         this.initializeGroupFormation();
+        this.updateParticipantsDisplay();
     }
 
     async loadPeopleFromDB() {
@@ -24,7 +25,7 @@ class ModernLanchinhoMiner {
             console.log('Erro ao carregar pessoas do banco, usando lista fixa');
             this.people = this.getFallbackPeople();
         } finally {
-            this.loadPeopleList();
+            this.updateParticipantsDisplay();
         }
     }
 
@@ -63,6 +64,13 @@ class ModernLanchinhoMiner {
         document.getElementById('people-list').addEventListener('click', (e) => {
             if (e.target.classList.contains('btn-remove')) {
                 const name = e.target.dataset.name;
+                console.log('Clique no botão de remoção detectado para:', name);
+                this.removePerson(name);
+            } else if (e.target.closest('.btn-remove')) {
+                // Se clicou no ícone dentro do botão
+                const button = e.target.closest('.btn-remove');
+                const name = button.dataset.name;
+                console.log('Clique no ícone de remoção detectado para:', name);
                 this.removePerson(name);
             }
         });
@@ -145,10 +153,10 @@ class ModernLanchinhoMiner {
 
     selectGroupSize(size) {
         // Remove seleção anterior
-        document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('selected'));
         
         // Adiciona nova seleção
-        document.querySelector(`[data-size="${size}"]`).classList.add('active');
+        document.querySelector(`[data-size="${size}"]`).classList.add('selected');
         
         this.selectedGroupSize = size;
         document.getElementById('group-size-display').textContent = size;
@@ -169,7 +177,9 @@ class ModernLanchinhoMiner {
             groupSizeConfig.style.display = 'block';
         }
         
-            }
+        // Define o botão padrão como ativo (3 pessoas)
+        this.selectGroupSize(3);
+    }
 
     checkCanGenerate() {
         const canGenerate = this.currentMonth && this.people.length > 0 && 
@@ -212,7 +222,7 @@ class ModernLanchinhoMiner {
             if (result.success) {
                 if (Array.isArray(result.people)) {
                     this.people = result.people;
-                    this.loadPeopleList();
+                    this.updateParticipantsDisplay();
                 } else {
                     await this.loadPeopleFromDB();
                 }
@@ -255,7 +265,7 @@ class ModernLanchinhoMiner {
             if (result.success) {
                 if (Array.isArray(result.people)) {
                     this.people = result.people;
-                    this.loadPeopleList();
+                    this.updateParticipantsDisplay();
                 } else {
                     await this.loadPeopleFromDB();
                 }
@@ -269,7 +279,7 @@ class ModernLanchinhoMiner {
         }
     }
 
-    loadPeopleList() {
+    updateParticipantsDisplay() {
         const container = document.getElementById('people-list');
         container.innerHTML = '';
         
