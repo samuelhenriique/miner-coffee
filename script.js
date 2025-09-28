@@ -1,7 +1,7 @@
 class ModernLanchinhoMiner {
     constructor() {
         this.selectedGroupSize = 3; // Padrão 3 pessoas
-        this.groupFormation = 'multiple'; // 'single' ou 'multiple'
+        this.groupFormation = 'multiple'; // sempre múltiplos grupos
         this.currentMonth = null;
         this.people = [];
         this.init();
@@ -14,6 +14,7 @@ class ModernLanchinhoMiner {
         this.updateParticipantsCount();
         this.initializeGroupFormation();
         this.updateParticipantsDisplay();
+        await this.loadExistingGroups(); // Carregar grupos existentes
     }
 
     async loadPeopleFromDB() {
@@ -34,12 +35,21 @@ class ModernLanchinhoMiner {
                 'Diego', 'Gustavo', 'Iza', 'Natali', 'Bruno', 'Alessandro', 'Luquinha'];
     }
 
-    setupEventListeners() {
-        // Event listeners para tipo de formação de grupos
-        document.querySelectorAll('input[name="group-formation"]').forEach(radio => {
-            radio.addEventListener('change', (e) => this.selectGroupFormation(e.target.value));
-        });
+    async loadExistingGroups() {
+        try {
+            const response = await fetch(`api-db.php?action=groups&month=${this.currentMonth}&formation=${this.groupFormation}&groupSize=${this.selectedGroupSize}`);
+            const result = await response.json();
+            
+            if (result.success && result.data && result.data.weekGroups.length > 0) {
+                this.displayGroups(result.data.weekGroups);
+                console.log('Grupos existentes carregados com sucesso');
+            }
+        } catch (error) {
+            console.log('Nenhum grupo existente encontrado ou erro ao carregar:', error);
+        }
+    }
 
+    setupEventListeners() {
         // Event listeners para seleção de tamanho do grupo
         document.querySelectorAll('.size-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.selectGroupSize(+e.target.dataset.size));
@@ -47,6 +57,25 @@ class ModernLanchinhoMiner {
 
         // Event listeners básicos
         document.getElementById('generate-groups').addEventListener('click', () => this.generateGroups());
+        document.getElementById('view-groups').addEventListener('click', () => this.openCompactView());
+        document.getElementById('close-compact-view').addEventListener('click', () => this.closeCompactView());
+        
+        // Fechar modal ao clicar fora dele
+        document.getElementById('compact-view-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'compact-view-modal') {
+                this.closeCompactView();
+            }
+        });
+
+        // Fechar modal com tecla ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const compactModal = document.getElementById('compact-view-modal');
+                if (compactModal.classList.contains('show')) {
+                    this.closeCompactView();
+                }
+            }
+        });
         document.getElementById('prev-month').addEventListener('click', () => this.changeMonth(-1));
         document.getElementById('next-month').addEventListener('click', () => this.changeMonth(1));
         document.getElementById('month-year').addEventListener('change', (e) => this.updateMonth(e.target.value));
@@ -137,19 +166,7 @@ class ModernLanchinhoMiner {
         return fridays;
     }
 
-    selectGroupFormation(formation) {
-                this.groupFormation = formation;
-        
-        // Mostra/esconde configuração de tamanho do grupo
-        const groupSizeConfig = document.getElementById('group-size-config');
-        if (formation === 'single') {
-            groupSizeConfig.style.display = 'none';
-        } else {
-            groupSizeConfig.style.display = 'block';
-        }
-        
-                this.checkCanGenerate();
-    }
+
 
     selectGroupSize(size) {
         // Remove seleção anterior
@@ -161,6 +178,9 @@ class ModernLanchinhoMiner {
         this.selectedGroupSize = size;
         document.getElementById('group-size-display').textContent = size;
         this.checkCanGenerate();
+        
+        // Carrega grupos existentes com novo tamanho
+        this.loadExistingGroups();
     }
 
     initializeGroupFormation() {
@@ -182,8 +202,7 @@ class ModernLanchinhoMiner {
     }
 
     checkCanGenerate() {
-        const canGenerate = this.currentMonth && this.people.length > 0 && 
-                          (this.groupFormation === 'single' || this.selectedGroupSize);
+        const canGenerate = this.currentMonth && this.people.length > 0 && this.selectedGroupSize;
         document.getElementById('generate-groups').disabled = !canGenerate;
     }
 
@@ -227,12 +246,19 @@ class ModernLanchinhoMiner {
                     await this.loadPeopleFromDB();
                 }
                 
-                // Recarrega os grupos se foram modificados
-                if (addToExisting && this.selectedGroupSize && this.currentMonth) {
-                    this.generateGroups();
-                }
-                
                 this.updateParticipantsCount();
+                
+                // Limpar grupos e notificar que devem ser regenerados
+                const groupsDisplay = document.getElementById('groups-display');
+                groupsDisplay.innerHTML = `
+                    <div class="empty-state">
+                        <h3>⚠️ Grupos precisam ser regenerados</h3>
+                        <p>Como a lista de participantes foi alterada, você precisa gerar os grupos novamente.</p>
+                        <p>Clique em "Gerar Grupos" para criar grupos com a nova lógica melhorada!</p>
+                    </div>
+                `;
+                
+                await this.loadExistingGroups();
             } else {
                 alert(result.error || 'Erro ao adicionar pessoa');
             }
@@ -270,6 +296,18 @@ class ModernLanchinhoMiner {
                     await this.loadPeopleFromDB();
                 }
                 this.updateParticipantsCount();
+                
+                // Limpar grupos e notificar que devem ser regenerados
+                const groupsDisplay = document.getElementById('groups-display');
+                groupsDisplay.innerHTML = `
+                    <div class="empty-state">
+                        <h3>⚠️ Grupos precisam ser regenerados</h3>
+                        <p>Como a lista de participantes foi alterada, você precisa gerar os grupos novamente.</p>
+                        <p>Clique em "Gerar Grupos" para criar grupos com a nova lógica melhorada!</p>
+                    </div>
+                `;
+                
+                await this.loadExistingGroups();
             } else {
                 alert(result.error || 'Erro ao remover pessoa');
             }
@@ -354,8 +392,8 @@ class ModernLanchinhoMiner {
         const date = new Date(year, month - 1 + direction, 1);
         this.updateMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
         
-        // Limpa grupos exibidos ao mudar de mês
-        this.clearGroupsDisplay();
+        // Carrega grupos existentes para o novo mês
+        this.loadExistingGroups();
     }
 
     async generateGroups() {
@@ -428,11 +466,16 @@ class ModernLanchinhoMiner {
                 globalGroupCounter++;
                 
                 return `
-                    <div class="group">
+                    <div class="group" data-week="${weekIndex}" data-group="${index}" data-date="${weekData.date}">
                         <div class="group-title">${groupTitle}</div>
                         <ul class="group-members">
                             ${membersHtml}
                         </ul>
+                        <div class="group-actions">
+                            <button class="edit-group-btn" onclick="modernLanchinho.editGroup(${weekIndex}, ${index}, '${weekData.date}')">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                        </div>
                     </div>
                 `;
             }).join('');
@@ -450,6 +493,234 @@ class ModernLanchinhoMiner {
                 container.innerHTML = groupsHtml;
     }
 
+    editGroup(weekIndex, groupIndex, date) {
+        // Buscar o grupo atual na tela
+        const groupElement = document.querySelector(`[data-week="${weekIndex}"][data-group="${groupIndex}"]`);
+        if (!groupElement) return;
+        
+        // Extrair membros atuais do grupo
+        const memberElements = groupElement.querySelectorAll('.group-members li');
+        const currentMembers = Array.from(memberElements).map(li => li.textContent.trim());
+        
+        // Criar lista de pessoas disponíveis (todos menos os membros atuais)
+        const availablePeople = this.people.filter(person => !currentMembers.includes(person));
+        
+        this.showEditModal(weekIndex, groupIndex, date, currentMembers, availablePeople);
+    }
+
+    showEditModal(weekIndex, groupIndex, date, currentMembers, availablePeople) {
+        // Criar modal de edição
+        const modal = document.createElement('div');
+        modal.className = 'edit-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Editar Grupo - ${new Date(date).toLocaleDateString('pt-BR')}</h3>
+                    <button class="close-modal" onclick="this.closest('.edit-modal').remove()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="edit-sections">
+                        <div class="current-members">
+                            <h4>Membros do Grupo</h4>
+                            <ul id="current-members-list">
+                                ${currentMembers.map(member => `
+                                    <li>
+                                        <span>${member}</span>
+                                        <button onclick="modernLanchinho.removeMemberFromGroup('${member}')" class="remove-btn">×</button>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                        <div class="available-members">
+                            <h4>Pessoas Disponíveis</h4>
+                            <ul id="available-members-list">
+                                ${availablePeople.map(person => `
+                                    <li>
+                                        <span>${person}</span>
+                                        <button onclick="modernLanchinho.addMemberToGroup('${person}')" class="add-btn">+</button>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="cancel-btn" onclick="this.closest('.edit-modal').remove()">Cancelar</button>
+                    <button class="save-btn" onclick="modernLanchinho.saveGroupEdit(${weekIndex}, ${groupIndex}, '${date}')">Salvar Alterações</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    }
+
+    removeMemberFromGroup(member) {
+        const currentList = document.getElementById('current-members-list');
+        const availableList = document.getElementById('available-members-list');
+        
+        // Remove da lista atual
+        const memberItem = Array.from(currentList.children).find(li => 
+            li.querySelector('span').textContent === member
+        );
+        if (memberItem) memberItem.remove();
+        
+        // Adiciona à lista disponível
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <span>${member}</span>
+            <button onclick="modernLanchinho.addMemberToGroup('${member}')" class="add-btn">+</button>
+        `;
+        availableList.appendChild(li);
+    }
+
+    addMemberToGroup(member) {
+        const currentList = document.getElementById('current-members-list');
+        const availableList = document.getElementById('available-members-list');
+        
+        // Remove da lista disponível
+        const memberItem = Array.from(availableList.children).find(li => 
+            li.querySelector('span').textContent === member
+        );
+        if (memberItem) memberItem.remove();
+        
+        // Adiciona à lista atual
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <span>${member}</span>
+            <button onclick="modernLanchinho.removeMemberFromGroup('${member}')" class="remove-btn">×</button>
+        `;
+        currentList.appendChild(li);
+    }
+
+    async saveGroupEdit(weekIndex, groupIndex, date) {
+        const currentList = document.getElementById('current-members-list');
+        const newMembers = Array.from(currentList.children).map(li => 
+            li.querySelector('span').textContent.trim()
+        );
+        
+        try {
+            const response = await fetch('api-db.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'updateGroup',
+                    date: date,
+                    groupIndex: groupIndex,
+                    members: newMembers
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Atualizar a exibição do grupo na tela
+                const groupElement = document.querySelector(`[data-week="${weekIndex}"][data-group="${groupIndex}"]`);
+                const membersList = groupElement.querySelector('.group-members');
+                membersList.innerHTML = newMembers.map(member => `<li>${member}</li>`).join('');
+                
+                // Fechar modal
+                document.querySelector('.edit-modal').remove();
+                
+                alert('Grupo atualizado com sucesso!');
+            } else {
+                alert('Erro ao salvar alterações: ' + (result.error || 'Erro desconhecido'));
+            }
+        } catch (error) {
+            alert('Erro ao salvar alterações: ' + error.message);
+        }
+    }
+
+    // Métodos para visualização compacta
+    openCompactView() {
+        const groupsDisplay = document.getElementById('groups-display');
+        const compactModal = document.getElementById('compact-view-modal');
+        const compactMonth = document.getElementById('compact-month');
+        const compactGroupsDisplay = document.getElementById('compact-groups-display');
+
+        // Verificar se há grupos para mostrar
+        if (groupsDisplay.innerHTML.includes('empty-state')) {
+            alert('Nenhum grupo foi gerado ainda. Gere os grupos primeiro!');
+            return;
+        }
+
+        // Definir o mês no título
+        const [year, month] = this.currentMonth.split('-');
+        const monthNames = [
+            'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ];
+        compactMonth.textContent = `${monthNames[parseInt(month) - 1]} ${year}`;
+
+        // Copiar grupos para o formato compacto
+        this.renderCompactGroups(compactGroupsDisplay);
+
+        // Mostrar modal
+        compactModal.classList.add('show');
+        document.body.style.overflow = 'hidden'; // Prevenir scroll da página
+    }
+
+    closeCompactView() {
+        const compactModal = document.getElementById('compact-view-modal');
+        compactModal.classList.remove('show');
+        document.body.style.overflow = 'auto'; // Restaurar scroll da página
+    }
+
+    renderCompactGroups(container) {
+        // Buscar os grupos atuais na tela principal
+        const weekGroups = document.querySelectorAll('.week-group');
+        
+        if (weekGroups.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #6c757d;">
+                    <h3>Nenhum grupo encontrado</h3>
+                    <p>Gere os grupos primeiro para visualizá-los aqui.</p>
+                </div>
+            `;
+            return;
+        }
+
+        let compactHTML = '';
+        let globalGroupCounter = 1;
+
+        weekGroups.forEach(weekGroup => {
+            const weekDate = weekGroup.querySelector('.week-date').textContent;
+            const groups = weekGroup.querySelectorAll('.group');
+            
+            if (groups.length === 0) return;
+
+            let groupsHTML = '';
+            groups.forEach(group => {
+                const members = Array.from(group.querySelectorAll('.group-members li'))
+                    .map(li => li.textContent.trim());
+                
+                const membersHTML = members.map(member => `<li>${member}</li>`).join('');
+                
+                groupsHTML += `
+                    <div class="compact-group">
+                        <div class="compact-group-title">Grupo ${globalGroupCounter}</div>
+                        <ul class="compact-group-members">
+                            ${membersHTML}
+                        </ul>
+                    </div>
+                `;
+                globalGroupCounter++;
+            });
+
+            compactHTML += `
+                <div class="compact-week-group">
+                    <div class="compact-week-date">${weekDate}</div>
+                    <div class="compact-groups-grid">
+                        ${groupsHTML}
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = compactHTML;
+    }
+
     clearGroupsDisplay() {
         const container = document.getElementById('groups-display');
         container.innerHTML = `
@@ -462,7 +733,8 @@ class ModernLanchinhoMiner {
 }
 
 // Inicializar o sistema quando a página carregar
+let modernLanchinho;
 document.addEventListener('DOMContentLoaded', () => {
-    new ModernLanchinhoMiner();
+    modernLanchinho = new ModernLanchinhoMiner();
 });
 

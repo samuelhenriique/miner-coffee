@@ -3,14 +3,41 @@ require_once 'database.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
 
 // Garante que sempre retornará JSON
 header('Content-Type: application/json');
 
+// Tratar requisições OPTIONS para CORS
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
 try {
     $db = new Database();
     
-    $action = $_GET['action'] ?? 'groups';
+    // Determinar action baseado no método da requisição
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Primeiro, verificar se action está na URL (para removePerson e addPerson)
+        $action = $_GET['action'] ?? null;
+        
+        // Se não estiver na URL, verificar no corpo da requisição
+        if (!$action) {
+            $rawInput = file_get_contents('php://input');
+            $input = json_decode($rawInput, true);
+            $action = $input['action'] ?? 'updateGroup';
+        } else {
+            // Se action está na URL, ainda precisamos do input para outras operações
+            $rawInput = file_get_contents('php://input');
+            $input = json_decode($rawInput, true);
+        }
+    } else {
+        $action = $_GET['action'] ?? 'groups';
+    }
+    
+
     
     if ($action === 'people') {
         // Retorna lista de pessoas do banco
@@ -23,6 +50,41 @@ try {
         $month = $_GET['month'] ?? date('Y-m');
         $dates = $db->getDatasDisponiveisDoMes($month);
         echo json_encode(['success' => true, 'data' => $dates]);
+        exit;
+    }
+    
+    if ($action === 'updateGroup') {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Método não permitido']);
+            exit;
+        }
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $date = $input['date'] ?? '';
+        $groupIndex = $input['groupIndex'] ?? 0;
+        $members = $input['members'] ?? [];
+        
+        if (empty($date) || empty($members)) {
+            echo json_encode(['success' => false, 'error' => 'Data e membros são obrigatórios']);
+            exit;
+        }
+        
+        // Validar formato da data
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            echo json_encode(['success' => false, 'error' => 'Formato de data inválido']);
+            exit;
+        }
+        
+        try {
+            $result = $db->updateGrupoEspecifico($date, $groupIndex, $members);
+            if ($result) {
+                echo json_encode(['success' => true, 'message' => 'Grupo atualizado com sucesso']);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Falha ao atualizar grupo']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'Erro interno: ' . $e->getMessage()]);
+        }
         exit;
     }
     
@@ -126,16 +188,30 @@ try {
             $fridays = getFridays($year, $monthNum);
             $people = $db->getPessoas();
             
+            // Buscar o último grupo do mês anterior (apenas para a primeira semana)
+            $ultimoGrupoMesAnterior = null;
+            try {
+                $reflection = new ReflectionClass($db);
+                $method = $reflection->getMethod('getUltimoGrupoDoMesAnterior');
+                $method->setAccessible(true);
+                $ultimoGrupoMesAnterior = $method->invoke($db, $month, $groupSize);
+            } catch (Exception $e) {
+                error_log("Erro ao buscar último grupo do mês anterior: " . $e->getMessage());
+            }
+            
             $weekGroups = [];
             foreach ($fridays as $i => $friday) {
+                // Passa o último grupo do mês anterior apenas para a primeira semana
+                $ultimoGrupoParaEssaSemana = ($i === 0) ? $ultimoGrupoMesAnterior : null;
+                
                 if ($formation === 'single') {
                     // Um único grupo por semana, mas respeitando o tamanho do grupo
-                    $groups = createGroupsWithCooldown($people, $groupSize, $weekGroups, $i);
+                    $groups = createGroupsWithCooldown($people, $groupSize, $weekGroups, $i, $ultimoGrupoParaEssaSemana);
                     // Pega apenas o primeiro grupo (um grupo por semana)
                     $groups = !empty($groups) ? [$groups[0]] : [];
                 } else {
                     // Múltiplos grupos por semana
-                    $groups = createGroupsWithCooldown($people, $groupSize, $weekGroups, $i);
+                    $groups = createGroupsWithCooldown($people, $groupSize, $weekGroups, $i, $ultimoGrupoParaEssaSemana);
                 }
                 
                 $weekGroups[] = [
@@ -179,10 +255,8 @@ try {
     
     if ($action === 'addPerson') {
         try {
-            $rawInput = file_get_contents('php://input');
-            error_log("Dados recebidos para adição: " . $rawInput);
+            error_log("Dados recebidos para adição: " . ($rawInput ?? 'undefined'));
             
-            $input = json_decode($rawInput, true);
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new Exception("Erro ao decodificar JSON: " . json_last_error_msg());
             }
@@ -197,18 +271,6 @@ try {
             
             error_log("Tentando adicionar pessoa: " . $name);
             $db->adicionarPessoa($name);
-            
-            // Se deve adicionar aos grupos existentes
-            if ($addToExistingGroups) {
-                $currentMonth = date('Y-m');
-                if (!empty($selectedDates)) {
-                    // Adicionar apenas às datas selecionadas
-                    $db->adicionarPessoaEmDatas($name, $selectedDates);
-                } else {
-                    // Adicionar a todas as datas do mês atual
-                    $db->adicionarPessoaEmTodasAsDatas($name, $currentMonth);
-                }
-            }
             
             $pessoas = $db->getPessoas();
             echo json_encode([
@@ -225,14 +287,12 @@ try {
 
     if ($action === 'removePerson') {
         try {
-            $rawInput = file_get_contents('php://input');
-            error_log("Dados recebidos para remoção: " . $rawInput);
+            error_log("Dados recebidos para remoção: " . ($rawInput ?? 'undefined'));
             
             if (empty($rawInput)) {
                 throw new Exception("Nenhum dado foi enviado");
             }
             
-            $input = json_decode($rawInput, true);
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new Exception("Erro ao decodificar JSON: " . json_last_error_msg());
             }
@@ -333,13 +393,19 @@ function createOneGroupPerWeek($people, $groupSize) {
     return [$group]; // Retorna array com um único grupo
 }
 
-function createGroupsWithCooldown($people, $groupSize, $weekGroups = [], $currentWeekIndex = 0) {
+function createGroupsWithCooldown($people, $groupSize, $weekGroups = [], $currentWeekIndex = 0, $ultimoGrupoMesAnterior = null) {
     if (empty($people) || $groupSize <= 0) {
         return [];
     }
     
     // Lista de pessoas que participaram nas últimas 2 semanas
     $recentParticipants = [];
+    
+    // Se é a primeira semana do mês e temos o último grupo do mês anterior, adiciona essas pessoas na restrição
+    if ($currentWeekIndex === 0 && !empty($ultimoGrupoMesAnterior)) {
+        $recentParticipants = array_merge($recentParticipants, $ultimoGrupoMesAnterior);
+        error_log("Aplicando restrição do último grupo do mês anterior: " . implode(", ", $ultimoGrupoMesAnterior));
+    }
     
     // Verifica as 2 semanas anteriores (se existirem)
     for ($i = max(0, $currentWeekIndex - 2); $i < $currentWeekIndex; $i++) {

@@ -113,7 +113,7 @@ class Database {
             $stmt = $this->pdo->prepare($sql);
             $result = $stmt->execute([$nome]);
             
-            // Limpa grupos salvos quando uma pessoa é adicionada
+            // Limpa grupos quando uma pessoa é adicionada (usuário deve regenerar manualmente)
             $this->limparTodosGrupos();
             
             error_log("Pessoa adicionada com sucesso: " . $nome);
@@ -141,7 +141,7 @@ class Database {
             $stmt = $this->pdo->prepare($sql);
             $result = $stmt->execute([$nome]);
             
-            // Limpa grupos salvos quando uma pessoa é removida
+            // Limpa grupos quando uma pessoa é removida (usuário deve regenerar manualmente)
             $this->limparTodosGrupos();
             
             error_log("Pessoa removida com sucesso: " . $nome);
@@ -157,7 +157,30 @@ class Database {
         $this->pdo->exec($sql);
         error_log("Todos os grupos foram limpos devido a mudança na lista de pessoas");
     }
+
     
+    private function getUltimoGrupoDoMesAnterior($mes, $tamanhoGrupo) {
+        // Calcular o mês anterior
+        $data = DateTime::createFromFormat('Y-m', $mes);
+        $data->modify('first day of last month');
+        $mesAnterior = $data->format('Y-m');
+        
+        $sql = "SELECT pessoas FROM grupos_gerados 
+                WHERE mes = ? AND tamanho_grupo = ? 
+                ORDER BY semana DESC, numero_grupo DESC 
+                LIMIT 1";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$mesAnterior, $tamanhoGrupo]);
+        
+        $resultado = $stmt->fetch();
+        if ($resultado) {
+            return json_decode($resultado['pessoas'], true);
+        }
+        
+        return null;
+    }
+
+
     public function getGruposPorMes($mes, $tamanhoGrupo = null) {
         if ($tamanhoGrupo !== null) {
             $sql = "SELECT * FROM grupos_gerados WHERE mes = ? AND tamanho_grupo = ? ORDER BY semana, numero_grupo";
@@ -223,67 +246,39 @@ class Database {
         return $this->pdo;
     }
 
-    public function adicionarPessoaEmTodasAsDatas($nome, $mes) {
-        try {
-            // Busca todas as datas existentes do mês
-            $stmt = $this->pdo->prepare("SELECT DISTINCT data_sexta FROM grupos_gerados WHERE mes = ?");
-            $stmt->execute([$mes]);
-            $datas = $stmt->fetchAll(PDO::FETCH_COLUMN);
-            
-            foreach ($datas as $data) {
-                $this->adicionarPessoaEmData($nome, $data);
-            }
-        } catch (PDOException $e) {
-            error_log("Erro ao adicionar pessoa em todas as datas: " . $e->getMessage());
-            throw new Exception("Erro ao adicionar pessoa aos grupos existentes");
-        }
-    }
 
-    public function adicionarPessoaEmDatas($nome, $datasArray) {
-        try {
-            foreach ($datasArray as $data) {
-                $this->adicionarPessoaEmData($nome, $data);
-            }
-        } catch (Exception $e) {
-            error_log("Erro ao adicionar pessoa em datas específicas: " . $e->getMessage());
-            throw new Exception("Erro ao adicionar pessoa às datas selecionadas");
-        }
-    }
 
-    private function adicionarPessoaEmData($nome, $data) {
+
+
+
+
+    public function updateGrupoEspecifico($data, $grupoIndex, $novosMembros) {
         try {
-            // Busca todos os grupos da data
-            $stmt = $this->pdo->prepare("SELECT id, pessoas FROM grupos_gerados WHERE data_sexta = ?");
+            // Buscar todos os grupos dessa data ordenados por numero_grupo
+            $stmt = $this->pdo->prepare("SELECT * FROM grupos_gerados WHERE data_sexta = ? ORDER BY numero_grupo");
             $stmt->execute([$data]);
             $grupos = $stmt->fetchAll();
             
             if (empty($grupos)) {
-                return; // Não há grupos para esta data
+                throw new Exception("Nenhum grupo encontrado para a data: " . $data);
             }
             
-            // Encontra o grupo com menos pessoas para adicionar
-            $grupoEscolhido = null;
-            $menorTamanho = PHP_INT_MAX;
-            
-            foreach ($grupos as $grupo) {
-                $pessoas = json_decode($grupo['pessoas'], true);
-                if (!in_array($nome, $pessoas) && count($pessoas) < $menorTamanho) {
-                    $menorTamanho = count($pessoas);
-                    $grupoEscolhido = $grupo;
-                }
+            // Verificar se o índice do grupo é válido
+            if ($grupoIndex < 0 || $grupoIndex >= count($grupos)) {
+                throw new Exception("Índice de grupo inválido: " . $grupoIndex);
             }
             
-            if ($grupoEscolhido) {
-                // Adiciona a pessoa ao grupo
-                $pessoas = json_decode($grupoEscolhido['pessoas'], true);
-                $pessoas[] = $nome;
-                
-                $updateStmt = $this->pdo->prepare("UPDATE grupos_gerados SET pessoas = ? WHERE id = ?");
-                $updateStmt->execute([json_encode($pessoas), $grupoEscolhido['id']]);
-            }
+            // Pegar o grupo específico
+            $grupo = $grupos[$grupoIndex];
+            
+            // Atualizar os membros do grupo
+            $stmt = $this->pdo->prepare("UPDATE grupos_gerados SET pessoas = ? WHERE id = ?");
+            $result = $stmt->execute([json_encode($novosMembros), $grupo['id']]);
+            
+            return $result;
         } catch (PDOException $e) {
-            error_log("Erro ao adicionar pessoa em data específica: " . $e->getMessage());
-            throw new Exception("Erro ao processar grupo da data " . $data);
+            error_log("Erro ao atualizar grupo específico: " . $e->getMessage());
+            throw new Exception("Erro ao atualizar grupo: " . $e->getMessage());
         }
     }
 

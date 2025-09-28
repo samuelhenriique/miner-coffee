@@ -102,25 +102,14 @@
                     </div>
                     
                     <div class="section-content">
-                        <!-- Tipo de Formação de Grupos -->
+                        <!-- Configuração dos Grupos -->
                         <div class="config-group">
-                            <label class="config-label">Formação dos Grupos</label>
-                            <div class="group-formation-options">
-                                <label class="radio-option">
-                                    <input type="radio" name="group-formation" value="single" id="single-group">
-                                    <span class="radio-text">
-                                        <strong>Grupo Único</strong>
-                                        <small>Todos juntos em um só grupo</small>
-                                    </span>
-                                </label>
-                                <label class="radio-option">
-                                    <input type="radio" name="group-formation" value="multiple" id="multiple-groups" checked>
-                                    <span class="radio-text">
-                                        <strong>Grupo por Sexta</strong>
-                                        <small>Um grupo de tamanho específico por sexta-feira</small>
-                                    </span>
-                                </label>
+                            <label class="config-label">Configuração dos Grupos</label>
+                            <div class="info-text">
+                                <strong>Grupo por Sexta</strong>
+                                <small>Um grupo de tamanho específico por sexta-feira</small>
                             </div>
+                            <input type="hidden" name="group-formation" value="multiple" id="multiple-groups">
                         </div>
 
                         <!-- Tamanho do Grupo (só aparece quando múltiplos grupos) -->
@@ -143,9 +132,14 @@
                     <h2 class="content-title">
                         Grupos do Mês
                     </h2>
-                    <button class="btn-generate" id="generate-groups">
-                        Gerar Grupos
-                    </button>
+                    <div class="header-buttons">
+                        <button class="btn-generate" id="generate-groups">
+                            Gerar Grupos
+                        </button>
+                        <button class="btn-view" id="view-groups">
+                            <i class="fas fa-eye"></i> Visualizar
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="content-body" id="groups-display">
@@ -164,6 +158,36 @@
             <p>&copy; 2025 Samuel H. - Todos os direitos reservados</p>
         </div>
     </footer>
+
+    <!-- Modal de Visualização Compacta -->
+    <div id="compact-view-modal" class="compact-modal">
+        <div class="compact-modal-content">
+            <div class="compact-header">
+                <h2 class="compact-title">Grupos do Mês - <span id="compact-month"></span></h2>
+                <button class="compact-close" id="close-compact-view">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="compact-body" id="compact-groups-display">
+                <!-- Grupos serão inseridos aqui -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Visualização Compacta -->
+    <div id="compact-view-modal" class="compact-modal">
+        <div class="compact-modal-content">
+            <div class="compact-header">
+                <h2 class="compact-title">Grupos do Mês - <span id="compact-month"></span></h2>
+                <button class="compact-close" id="close-compact-view">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="compact-body" id="compact-groups-display">
+                <!-- Grupos serão inseridos aqui -->
+            </div>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
