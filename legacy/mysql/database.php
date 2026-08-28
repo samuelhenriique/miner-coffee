@@ -68,8 +68,8 @@ class Database {
             // Verificar se existem pessoas, se não adicionar as padrão
             $count = $this->pdo->query("SELECT COUNT(*) FROM pessoas")->fetchColumn();
             if ($count == 0) {
-                $pessoasPadrao = ['Samuel', 'Tavares', 'Anderson Ramos', 'Anderson Mazzuchello',
-                                'Diego', 'Gustavo', 'Iza', 'Natali', 'Bruno', 'Alessandro', 'Luquinha'];
+                $pessoasPadrao = ['Samuel', 'Gustavo Gross', 'Anderson Mazzuchello',
+                                'Diego', 'Gustavo Matos', 'Iza', 'Julia', 'Bruno', 'Alessandro', 'Luquinha', 'Greice']; //'Anderson Ramos',
                 
                 $insertSql = "INSERT INTO pessoas (nome, ativo) VALUES (?, 1)";
                 $stmt = $this->pdo->prepare($insertSql);

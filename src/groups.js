@@ -1,5 +1,5 @@
 import { dateToISO, getFridaysInMonth } from './dates.js';
-
+// codigo para gerar os grupos de pessoas para cada sexta-feira de um determinado mês, considerando o tamanho do grupo e o histórico de participação
 export function getMonthKey(month, groupSize) {
     return `${month}|${groupSize}`;
 }
@@ -7,6 +7,11 @@ export function getMonthKey(month, groupSize) {
 export function generateMonthGroups({ month, people, groupSize, savedMonths }) {
     const [year, monthNumber] = month.split('-').map(Number);
     const fridays = getFridaysInMonth(year, monthNumber);
+    const weeklyGroupSizes = distributeExtraPeople({
+        peopleCount: people.length,
+        weeksCount: fridays.length,
+        groupSize
+    });
     const weekGroups = [];
     const historyMonths = { ...savedMonths };
 
@@ -17,7 +22,7 @@ export function generateMonthGroups({ month, people, groupSize, savedMonths }) {
         const group = createGroupForDate({
             date,
             people,
-            groupSize,
+            groupSize: weeklyGroupSizes[index],
             draftWeeks: weekGroups,
             savedMonths: historyMonths
         });
@@ -44,7 +49,15 @@ function createGroupForDate({ date, people, groupSize, draftWeeks, savedMonths }
     if (candidates.length < groupSize) candidates = people;
 
     const history = getParticipationHistory(date, people, draftWeeks, savedMonths);
+    const currentMonthParticipants = new Set(
+        draftWeeks
+            .filter(week => week.date.startsWith(date.slice(0, 7)))
+            .flatMap(week => week.groups.flat())
+    );
     const ranked = shuffle(candidates).sort((a, b) => {
+        const monthParticipationDiff = Number(currentMonthParticipants.has(a)) - Number(currentMonthParticipants.has(b));
+        if (monthParticipationDiff !== 0) return monthParticipationDiff;
+
         const countDiff = (history.counts[a] || 0) - (history.counts[b] || 0);
         if (countDiff !== 0) return countDiff;
 
@@ -54,6 +67,20 @@ function createGroupForDate({ date, people, groupSize, draftWeeks, savedMonths }
     });
 
     return ranked.slice(0, groupSize);
+}
+
+function distributeExtraPeople({ peopleCount, weeksCount, groupSize }) {
+    const weeklySizes = Array(weeksCount).fill(groupSize);
+    let extraPeople = Math.max(0, peopleCount - (weeksCount * groupSize));
+    const expandableWeeks = Math.min(2, weeksCount);
+
+    for (let offset = 0; extraPeople > 0; offset += 1) {
+        const weekIndex = weeksCount - 1 - (offset % expandableWeeks);
+        weeklySizes[weekIndex] += 1;
+        extraPeople -= 1;
+    }
+
+    return weeklySizes;
 }
 
 function getRecentParticipants(beforeDate, weeksBack, draftWeeks, savedMonths) {

@@ -1,6 +1,17 @@
 import { downloadMonthBanner } from './banner.js';
-import { formatDate, getFridaysInMonth, getReadableMonth } from './dates.js';
+import { downloadBackup, readBackupFile } from './backup.js';
+import { getFridaysInMonth, getReadableMonth } from './dates.js';
 import { generateMonthGroups, getMonthKey } from './groups.js';
+import {
+    clearGroupsDisplay,
+    closeCompactGroupsView,
+    openCompactGroupsView,
+    renderGroups,
+    showGroupEditModal,
+    showRegenerateMessage
+} from './groups-view.js';
+import { closeHistoryModal, getPreviousGroupHistory, openHistoryModal } from './history.js';
+import { hasParticipant, renderParticipants, sortParticipants } from './participants.js';
 import { loadAppState, saveAppState } from './storage.js';
 
 class ModernLanchinhoMiner {
@@ -20,7 +31,7 @@ class ModernLanchinhoMiner {
         this.setCurrentMonth();
         this.updateParticipantsCount();
         this.initializeGroupFormation();
-        this.updateParticipantsDisplay();
+        renderParticipants(this.people);
         this.loadExistingGroups();
     }
 
@@ -31,18 +42,27 @@ class ModernLanchinhoMiner {
 
         document.getElementById('generate-groups').addEventListener('click', () => this.generateGroups());
         document.getElementById('view-groups').addEventListener('click', () => this.openCompactView());
+        document.getElementById('view-history').addEventListener('click', () => this.openGroupHistory());
         document.getElementById('download-banner').addEventListener('click', () => this.downloadBanner());
         document.getElementById('export-data').addEventListener('click', () => this.exportData());
         document.getElementById('import-data').addEventListener('click', () => document.getElementById('import-file').click());
         document.getElementById('import-file').addEventListener('change', (event) => this.importData(event));
         document.getElementById('close-compact-view').addEventListener('click', () => this.closeCompactView());
+        document.getElementById('close-history').addEventListener('click', () => closeHistoryModal());
 
         document.getElementById('compact-view-modal').addEventListener('click', (event) => {
             if (event.target.id === 'compact-view-modal') this.closeCompactView();
         });
 
+        document.getElementById('history-modal').addEventListener('click', (event) => {
+            if (event.target.id === 'history-modal') closeHistoryModal();
+        });
+
         document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape') this.closeCompactView();
+            if (event.key === 'Escape') {
+                this.closeCompactView();
+                closeHistoryModal();
+            }
         });
 
         document.getElementById('prev-month').addEventListener('click', () => this.changeMonth(-1));
@@ -136,12 +156,12 @@ class ModernLanchinhoMiner {
         const savedMonth = this.state.months[this.getCurrentMonthKey()];
         if (savedMonth?.weekGroups?.length) {
             this.currentWeekGroups = savedMonth.weekGroups;
-            this.displayGroups(this.currentWeekGroups);
+            renderGroups(this.currentWeekGroups);
             return;
         }
 
         this.currentWeekGroups = [];
-        this.clearGroupsDisplay();
+        clearGroupsDisplay();
     }
 
     getCurrentMonthKey() {
@@ -149,20 +169,16 @@ class ModernLanchinhoMiner {
     }
 
     addPerson(name) {
-        const normalized = name.toLocaleLowerCase('pt-BR');
-        const alreadyExists = this.people.some(person => person.toLocaleLowerCase('pt-BR') === normalized);
-
-        if (alreadyExists) {
+        if (hasParticipant(this.people, name)) {
             alert('Essa pessoa ja esta na lista.');
             return;
         }
 
-        this.people.push(name);
-        this.people.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        this.people = sortParticipants([...this.people, name]);
         this.persistState();
-        this.updateParticipantsDisplay();
+        renderParticipants(this.people);
         this.updateParticipantsCount();
-        this.showRegenerateMessage('A lista de participantes mudou. Gere novamente os grupos dos meses futuros que ainda nao foram publicados.');
+        showRegenerateMessage('A lista de participantes mudou. Gere novamente os grupos dos meses futuros que ainda nao foram publicados.');
     }
 
     removePerson(name) {
@@ -171,46 +187,14 @@ class ModernLanchinhoMiner {
 
         this.people = this.people.filter(person => person !== name);
         this.persistState();
-        this.updateParticipantsDisplay();
+        renderParticipants(this.people);
         this.updateParticipantsCount();
-        this.showRegenerateMessage('Participante removido dos proximos sorteios. O historico anterior continua guardado para evitar repeticoes proximas.');
-    }
-
-    updateParticipantsDisplay() {
-        const container = document.getElementById('people-list');
-        container.innerHTML = '';
-
-        this.people.forEach(person => {
-            const item = document.createElement('li');
-            item.className = 'participant-item';
-            item.innerHTML = `
-                <div class="participant-avatar">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div class="participant-info">
-                    <div class="participant-name">${this.escapeHtml(person)}</div>
-                    <div class="participant-status">Ativo</div>
-                </div>
-                <button class="btn-remove" data-name="${this.escapeHtml(person)}" title="Remover participante">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-            `;
-            container.appendChild(item);
-        });
+        showRegenerateMessage('Participante removido dos proximos sorteios. O historico anterior continua guardado para evitar repeticoes proximas.');
     }
 
     updateParticipantsCount() {
         document.getElementById('participants-count').textContent = `${this.people.length} ativos`;
         this.checkCanGenerate();
-    }
-
-    showRegenerateMessage(message) {
-        document.getElementById('groups-display').innerHTML = `
-            <div class="empty-state">
-                <h3>Grupos precisam ser revisados</h3>
-                <p>${message}</p>
-            </div>
-        `;
     }
 
     changeMonth(direction) {
@@ -242,60 +226,7 @@ class ModernLanchinhoMiner {
 
         this.currentWeekGroups = weekGroups;
         this.persistState();
-        this.displayGroups(weekGroups);
-    }
-
-    displayGroups(weekGroups) {
-        const container = document.getElementById('groups-display');
-
-        if (!Array.isArray(weekGroups) || weekGroups.length === 0) {
-            this.clearGroupsDisplay();
-            return;
-        }
-
-        let globalGroupCounter = 1;
-
-        container.innerHTML = weekGroups.map((weekData, weekIndex) => {
-            const dateFormatted = formatDate(weekData.date, {
-                day: '2-digit',
-                month: 'long',
-                year: 'numeric'
-            });
-
-            const groupsForWeek = weekData.groups.map((group, groupIndex) => {
-                const membersHtml = group.map(person => `<li>${this.escapeHtml(person)}</li>`).join('');
-                const groupTitle = `Grupo ${globalGroupCounter++}`;
-
-                return `
-                    <div class="group" data-week="${weekIndex}" data-group="${groupIndex}" data-date="${weekData.date}">
-                        <div class="group-title">${groupTitle}</div>
-                        <ul class="group-members">
-                            ${membersHtml}
-                        </ul>
-                        <div class="group-actions">
-                            <button
-                                class="edit-group-btn"
-                                data-week="${weekIndex}"
-                                data-group="${groupIndex}"
-                                data-date="${weekData.date}"
-                                type="button"
-                            >
-                                <i class="fas fa-edit"></i> Editar
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            return `
-                <div class="week-group">
-                    <div class="week-date">${dateFormatted}</div>
-                    <div class="groups-grid">
-                        ${groupsForWeek}
-                    </div>
-                </div>
-            `;
-        }).join('');
+        renderGroups(weekGroups);
     }
 
     editGroup(weekIndex, groupIndex, date) {
@@ -303,111 +234,22 @@ class ModernLanchinhoMiner {
         if (!group) return;
 
         const availablePeople = this.people.filter(person => !group.includes(person));
-        this.showEditModal(weekIndex, groupIndex, date, group, availablePeople);
-    }
-
-    showEditModal(weekIndex, groupIndex, date, currentMembers, availablePeople) {
-        document.querySelector('.edit-modal')?.remove();
-
-        const modal = document.createElement('div');
-        modal.className = 'edit-modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Editar grupo - ${formatDate(date)}</h3>
-                    <button class="close-modal" data-modal-close type="button">x</button>
-                </div>
-                <div class="modal-body">
-                    <div class="edit-sections">
-                        <div class="current-members">
-                            <h4>Membros do grupo</h4>
-                            <ul id="current-members-list">
-                                ${currentMembers.map(member => this.renderMemberEditorItem(member, 'remove')).join('')}
-                            </ul>
-                        </div>
-                        <div class="available-members">
-                            <h4>Pessoas disponiveis</h4>
-                            <ul id="available-members-list">
-                                ${availablePeople.map(person => this.renderMemberEditorItem(person, 'add')).join('')}
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="cancel-btn" data-modal-close type="button">Cancelar</button>
-                    <button class="save-btn" data-save-group type="button">Salvar alteracoes</button>
-                </div>
-            </div>
-        `;
-
-        modal.addEventListener('click', (event) => {
-            const closeButton = event.target.closest('[data-modal-close]');
-            if (closeButton) {
-                modal.remove();
-                return;
-            }
-
-            const memberButton = event.target.closest('[data-member-action]');
-            if (memberButton) {
-                this.moveMember(memberButton.dataset.member, memberButton.dataset.memberAction);
-                return;
-            }
-
-            const saveButton = event.target.closest('[data-save-group]');
-            if (saveButton) this.saveGroupEdit(weekIndex, groupIndex);
+        showGroupEditModal({
+            date,
+            currentMembers: group,
+            availablePeople,
+            onSave: newMembers => this.saveGroupEdit(weekIndex, groupIndex, newMembers)
         });
-
-        document.body.appendChild(modal);
     }
 
-    renderMemberEditorItem(member, action) {
-        const buttonClass = action === 'add' ? 'add-btn' : 'remove-btn';
-        const buttonLabel = action === 'add' ? '+' : 'x';
-
-        return `
-            <li>
-                <span>${this.escapeHtml(member)}</span>
-                <button
-                    class="${buttonClass}"
-                    data-member-action="${action}"
-                    data-member="${this.escapeHtml(member)}"
-                    type="button"
-                >
-                    ${buttonLabel}
-                </button>
-            </li>
-        `;
-    }
-
-    moveMember(member, action) {
-        const sourceId = action === 'add' ? 'available-members-list' : 'current-members-list';
-        const targetId = action === 'add' ? 'current-members-list' : 'available-members-list';
-        const nextAction = action === 'add' ? 'remove' : 'add';
-        const source = document.getElementById(sourceId);
-        const target = document.getElementById(targetId);
-        const item = Array.from(source.children).find(li => li.querySelector('span').textContent === member);
-
-        if (item) item.remove();
-        target.insertAdjacentHTML('beforeend', this.renderMemberEditorItem(member, nextAction));
-    }
-
-    saveGroupEdit(weekIndex, groupIndex) {
-        const currentList = document.getElementById('current-members-list');
-        const newMembers = Array.from(currentList.children).map(li => li.querySelector('span').textContent.trim());
-
-        if (newMembers.length === 0) {
-            alert('O grupo precisa ter pelo menos uma pessoa.');
-            return;
-        }
-
+    saveGroupEdit(weekIndex, groupIndex, newMembers) {
         this.currentWeekGroups[weekIndex].groups[groupIndex] = newMembers;
 
         const savedMonth = this.state.months[this.getCurrentMonthKey()];
         if (savedMonth) savedMonth.weekGroups = this.currentWeekGroups;
 
         this.persistState();
-        this.displayGroups(this.currentWeekGroups);
-        document.querySelector('.edit-modal')?.remove();
+        renderGroups(this.currentWeekGroups);
     }
 
     openCompactView() {
@@ -416,44 +258,31 @@ class ModernLanchinhoMiner {
             return;
         }
 
-        document.getElementById('compact-month').textContent = getReadableMonth(this.currentMonth);
-        this.renderCompactGroups(document.getElementById('compact-groups-display'));
-
-        document.getElementById('compact-view-modal').classList.add('show');
-        document.body.style.overflow = 'hidden';
+        openCompactGroupsView({
+            weekGroups: this.currentWeekGroups,
+            currentMonth: this.currentMonth
+        });
     }
 
     closeCompactView() {
-        document.getElementById('compact-view-modal').classList.remove('show');
-        document.body.style.overflow = 'auto';
+        closeCompactGroupsView();
     }
 
-    renderCompactGroups(container) {
-        let globalGroupCounter = 1;
+    openGroupHistory() {
+        const now = new Date();
+        const referenceMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const history = getPreviousGroupHistory(this.state.months, referenceMonth);
 
-        container.innerHTML = this.currentWeekGroups.map(week => {
-            const groupsHTML = week.groups.map(group => {
-                const membersHTML = group.map(member => `<li>${this.escapeHtml(member)}</li>`).join('');
-
-                return `
-                    <div class="compact-group">
-                        <div class="compact-group-title">Grupo ${globalGroupCounter++}</div>
-                        <ul class="compact-group-members">
-                            ${membersHTML}
-                        </ul>
-                    </div>
-                `;
-            }).join('');
-
-            return `
-                <div class="compact-week-group">
-                    <div class="compact-week-date">${formatDate(week.date, { day: '2-digit', month: 'long', year: 'numeric' })}</div>
-                    <div class="compact-groups-grid">
-                        ${groupsHTML}
-                    </div>
-                </div>
-            `;
-        }).join('');
+        openHistoryModal({
+            history,
+            onView: entry => {
+                closeHistoryModal();
+                openCompactGroupsView({
+                    weekGroups: entry.weekGroups,
+                    currentMonth: entry.month
+                });
+            }
+        });
     }
 
     downloadBanner() {
@@ -470,62 +299,35 @@ class ModernLanchinhoMiner {
 
     exportData() {
         this.persistState();
-
-        const blob = new Blob([JSON.stringify(this.state, null, 2)], { type: 'application/json' });
-        const link = document.createElement('a');
-
-        link.href = URL.createObjectURL(blob);
-        link.download = `backup-lanchinho-miner-${new Date().toISOString().slice(0, 10)}.json`;
-        link.click();
-        URL.revokeObjectURL(link.href);
+        downloadBackup(this.state);
     }
 
-    importData(event) {
+    async importData(event) {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        const reader = new FileReader();
+        try {
+            const imported = await readBackupFile(file);
+            const shouldImport = confirm('Importar este backup? Ele vai substituir os dados deste navegador.');
+            if (!shouldImport) return;
 
-        reader.onload = () => {
-            try {
-                const imported = JSON.parse(reader.result);
-
-                if (!Array.isArray(imported.people) || !imported.months || typeof imported.months !== 'object') {
-                    throw new Error('Arquivo de backup invalido.');
-                }
-
-                const shouldImport = confirm('Importar este backup? Ele vai substituir os dados deste navegador.');
-                if (!shouldImport) return;
-
-                this.state = {
-                    version: 2,
-                    people: imported.people,
-                    months: imported.months,
-                    updatedAt: new Date().toISOString()
-                };
-                this.people = [...this.state.people];
-                this.persistState();
-                this.updateParticipantsDisplay();
-                this.updateParticipantsCount();
-                this.loadExistingGroups();
-                alert('Backup importado com sucesso.');
-            } catch (error) {
-                alert(error.message || 'Nao foi possivel importar o backup.');
-            } finally {
-                event.target.value = '';
-            }
-        };
-
-        reader.readAsText(file);
-    }
-
-    clearGroupsDisplay() {
-        document.getElementById('groups-display').innerHTML = `
-            <div class="empty-state">
-                <h3>Nenhum grupo gerado ainda</h3>
-                <p>Clique em "Gerar grupos" para criar os grupos deste mes.</p>
-            </div>
-        `;
+            this.state = {
+                version: 2,
+                people: imported.people,
+                months: imported.months,
+                updatedAt: new Date().toISOString()
+            };
+            this.people = [...this.state.people];
+            this.persistState();
+            renderParticipants(this.people);
+            this.updateParticipantsCount();
+            this.loadExistingGroups();
+            alert('Backup importado com sucesso.');
+        } catch (error) {
+            alert(error.message || 'Nao foi possivel importar o backup.');
+        } finally {
+            event.target.value = '';
+        }
     }
 
     persistState() {
@@ -535,14 +337,6 @@ class ModernLanchinhoMiner {
         });
     }
 
-    escapeHtml(value) {
-        return String(value)
-            .replaceAll('&', '&amp;')
-            .replaceAll('<', '&lt;')
-            .replaceAll('>', '&gt;')
-            .replaceAll('"', '&quot;')
-            .replaceAll("'", '&#039;');
-    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

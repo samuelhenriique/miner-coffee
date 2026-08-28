@@ -512,6 +512,7 @@ body {
 }
 
 .btn-view,
+.btn-history,
 .btn-banner,
 .btn-secondary {
     background: #6c757d;
@@ -529,6 +530,7 @@ body {
 }
 
 .btn-view:hover,
+.btn-history:hover,
 .btn-secondary:hover {
     background: #5a6268;
     transform: translateY(-1px);
@@ -1053,6 +1055,142 @@ body {
 
 .save-btn:hover {
     background: #218838;
+}
+
+/* Historico de grupos */
+.history-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    z-index: 10000;
+}
+
+.history-modal.show {
+    display: flex;
+}
+
+.history-modal-content {
+    background: white;
+    width: 100%;
+    max-width: 720px;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.history-header {
+    background: #ff8c42;
+    color: white;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.history-header h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.history-close {
+    background: none;
+    border: none;
+    color: white;
+    padding: 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.history-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.history-list {
+    padding: 18px;
+    overflow-y: auto;
+    background: #f8f9fa;
+}
+
+.history-item {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.history-item:last-child {
+    margin-bottom: 0;
+}
+
+.history-item-info h3 {
+    color: #212529;
+    font-size: 17px;
+    margin: 0 0 5px;
+}
+
+.history-item-info p {
+    color: #495057;
+    margin: 0 0 4px;
+}
+
+.history-item-info small {
+    color: #6c757d;
+}
+
+.history-view-button {
+    background: #ff8c42;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.history-view-button:hover {
+    background: #ff7b29;
+}
+
+.history-empty {
+    text-align: center;
+    color: #6c757d;
+    padding: 34px 16px;
+}
+
+.history-empty h3 {
+    color: #343a40;
+    margin: 0 0 8px;
+}
+
+.history-empty p {
+    margin: 0;
+}
+
+@media (max-width: 600px) {
+    .history-item {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .history-view-button {
+        justify-content: center;
+    }
 }
 
 /* Modal de Visualização Compacta */

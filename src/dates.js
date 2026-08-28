@@ -1,4 +1,4 @@
-export function getFridaysInMonth(year, month) {
+export function getFridaysInMonth(year, month) { // regra para pegar todas as sextas-feiras de um determinado mês e ano
     const fridays = [];
     const date = new Date(year, month - 1, 1);
 

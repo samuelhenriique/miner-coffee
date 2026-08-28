@@ -1,5 +1,5 @@
 import { DEFAULT_PEOPLE, STORAGE_KEY } from './defaults.js';
-
+// Funções para carregar e salvar o estado do aplicativo no localStorage do navegador, incluindo fallback para valores padrão
 export function loadAppState() {
     const fallback = createFallbackState();
 

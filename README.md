@@ -5,10 +5,12 @@ Sistema para montar os grupos do cafe de sexta-feira da equipe, mantendo histori
 ## O que ele faz
 
 - Gera um grupo por sexta-feira do mes.
+- Usa o tamanho escolhido como base e amplia os dois ultimos grupos quando necessario para incluir todos no mes.
 - Evita repetir pessoas que participaram nas sextas mais recentes.
 - Leva em conta o fim do mes anterior ao gerar o inicio do mes seguinte.
 - Permite adicionar e remover participantes ativos.
 - Permite editar grupos manualmente antes de publicar.
+- Permite consultar os grupos gerados nos meses anteriores.
 - Salva o historico no navegador.
 - Exporta e importa backup em JSON.
 - Baixa um banner em PNG com os grupos do mes.
@@ -42,10 +44,15 @@ miner-coffee/
       main.css
   src/
     app.js
+    backup.js
     banner.js
     dates.js
     defaults.js
+    groups-view.js
     groups.js
+    history.js
+    html.js
+    participants.js
     storage.js
   legacy/
     mysql/
@@ -56,11 +63,16 @@ miner-coffee/
 
 Responsabilidades principais:
 
-- `src/app.js`: controla a interface e os eventos da tela.
+- `src/app.js`: coordena o estado e os eventos da aplicacao.
+- `src/participants.js`: regras simples e renderizacao dos participantes.
 - `src/groups.js`: regra de geracao dos grupos e historico.
+- `src/groups-view.js`: renderizacao dos grupos, edicao e visualizacao compacta.
+- `src/history.js`: listagem e visualizacao dos grupos de meses anteriores.
 - `src/storage.js`: leitura e gravacao no navegador.
+- `src/backup.js`: exportacao, leitura e validacao inicial dos backups.
 - `src/banner.js`: geracao do PNG para postagem.
 - `src/dates.js`: formatacao e calculo das sextas-feiras.
+- `src/html.js`: escape de textos inseridos no HTML.
 - `assets/styles/main.css`: estilos da aplicacao.
 
 ## Como hospedar

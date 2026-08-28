@@ -93,12 +93,14 @@
                         </div>
 
                         <div class="config-group" id="group-size-config">
-                            <label class="config-label">Grupo com <span id="group-size-display">3</span> pessoas</label>
+                            <label class="config-label">Tamanho base: <span id="group-size-display">3</span> pessoas</label>
                             <div class="size-options">
-                                <button class="size-btn" data-size="2" type="button">2</button>
                                 <button class="size-btn selected" data-size="3" type="button">3</button>
                                 <button class="size-btn" data-size="4" type="button">4</button>
                                 <button class="size-btn" data-size="5" type="button">5</button>
+                            </div>
+                            <div class="info-text">
+                                <small>Se necessario, os dois ultimos grupos recebem mais pessoas para incluir todos no mes.</small>
                             </div>
                         </div>
                     </div>
@@ -139,6 +141,10 @@
                             <i class="fas fa-eye"></i>
                             Visualizar
                         </button>
+                        <button class="btn-history" id="view-history" type="button">
+                            <i class="fas fa-clock-rotate-left"></i>
+                            Grupos anteriores
+                        </button>
                         <button class="btn-banner" id="download-banner" type="button">
                             <i class="fas fa-image"></i>
                             Baixar banner
@@ -171,6 +177,18 @@
                 </button>
             </div>
             <div class="compact-body" id="compact-groups-display"></div>
+        </div>
+    </div>
+
+    <div id="history-modal" class="history-modal">
+        <div class="history-modal-content">
+            <div class="history-header">
+                <h2>Grupos de meses anteriores</h2>
+                <button class="history-close" id="close-history" type="button" aria-label="Fechar historico">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="history-list" id="history-list"></div>
         </div>
     </div>
 

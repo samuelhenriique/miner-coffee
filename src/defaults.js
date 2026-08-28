@@ -1,15 +1,17 @@
-export const STORAGE_KEY = 'lanchinho-miner-v2';
+export const STORAGE_KEY = 'lanchinho-miner-v2'; // Chave de armazenamento para o localStorage do navegador
 
-export const DEFAULT_PEOPLE = [
+export const DEFAULT_PEOPLE = [ // participantes padrão do cafe da sexta-feira
     'Samuel',
     'Matheus',
-    'Anderson Ramos',
+    //'Anderson Ramos', //n vem mais na sexta-feira
     'Anderson Mazzuchello',
     'Diego',
-    'Gustavo',
+    'Gustavo Matos',
+    'Gustavo Gross',
     'Iza',
     'Julia',
     'Bruno',
     'Alessandro',
-    'Luquinha'
+    'Luquinha',
+    'Greice'
 ];
