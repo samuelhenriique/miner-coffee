@@ -1,4 +1,4 @@
-# Lanchinho Miner
+# MinerCoffe
 
 Projeto para organizar os grupos do cafe de sexta-feira da equipe.
 
