@@ -1,6 +1,6 @@
-import { formatDate, getReadableMonth } from './dates.js';
+import { formatarData, nomeDoMes } from './datas.js';
 
-export function downloadMonthBanner({ weekGroups, currentMonth }) {
+export function baixarBannerDoMes({ semanas, mes }) {
     const canvas = document.createElement('canvas');
     const width = 1080;
     const height = 1350;
@@ -24,7 +24,7 @@ export function downloadMonthBanner({ weekGroups, currentMonth }) {
     ctx.fillText('Lanchinho Miner', width / 2, 82);
 
     ctx.font = '500 34px Segoe UI, Arial';
-    ctx.fillText(`Grupos de ${getReadableMonth(currentMonth)}`, width / 2, 138);
+    ctx.fillText(`Grupos de ${nomeDoMes(mes)}`, width / 2, 138);
 
     ctx.font = '400 25px Segoe UI, Arial';
     ctx.fillText('Cafe de sexta-feira da equipe', width / 2, 180);
@@ -32,25 +32,25 @@ export function downloadMonthBanner({ weekGroups, currentMonth }) {
     let y = 285;
     let groupCounter = 1;
 
-    weekGroups.forEach(week => {
+    semanas.forEach(semana => {
         ctx.fillStyle = '#ff8c42';
-        roundRect(ctx, 70, y, width - 140, 58, 16);
+        desenharRetanguloArredondado(ctx, 70, y, width - 140, 58, 16);
         ctx.fill();
 
         ctx.fillStyle = '#ffffff';
         ctx.font = '700 27px Segoe UI, Arial';
         ctx.textAlign = 'left';
-        ctx.fillText(formatDate(week.date, { weekday: 'long', day: '2-digit', month: 'long' }), 100, y + 38);
+        ctx.fillText(formatarData(semana.date, { weekday: 'long', day: '2-digit', month: 'long' }), 100, y + 38);
         y += 90;
 
-        week.groups.forEach(group => {
+        semana.groups.forEach(grupo => {
             ctx.fillStyle = '#ffffff';
-            roundRect(ctx, 90, y, width - 180, 118, 18);
+            desenharRetanguloArredondado(ctx, 90, y, width - 180, 118, 18);
             ctx.fill();
 
             ctx.strokeStyle = '#f2d1b8';
             ctx.lineWidth = 2;
-            roundRect(ctx, 90, y, width - 180, 118, 18);
+            desenharRetanguloArredondado(ctx, 90, y, width - 180, 118, 18);
             ctx.stroke();
 
             ctx.fillStyle = '#242424';
@@ -59,7 +59,7 @@ export function downloadMonthBanner({ weekGroups, currentMonth }) {
 
             ctx.fillStyle = '#505050';
             ctx.font = '500 26px Segoe UI, Arial';
-            wrapText(ctx, group.join('  |  '), 120, y + 82, width - 240, 31);
+            quebrarTexto(ctx, grupo.join('  |  '), 120, y + 82, width - 240, 31);
             y += 146;
         });
     });
@@ -70,12 +70,12 @@ export function downloadMonthBanner({ weekGroups, currentMonth }) {
     ctx.fillText('Bom cafe e boa conversa!', width / 2, height - 70);
 
     const link = document.createElement('a');
-    link.download = `lanchinho-miner-${currentMonth}.png`;
+    link.download = `lanchinho-miner-${mes}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
 }
 
-function roundRect(ctx, x, y, width, height, radius) {
+function desenharRetanguloArredondado(ctx, x, y, width, height, radius) {
     ctx.beginPath();
     ctx.moveTo(x + radius, y);
     ctx.lineTo(x + width - radius, y);
@@ -89,7 +89,7 @@ function roundRect(ctx, x, y, width, height, radius) {
     ctx.closePath();
 }
 
-function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+function quebrarTexto(ctx, text, x, y, maxWidth, lineHeight) {
     const words = text.split(' ');
     let line = '';
 
