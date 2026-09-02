@@ -944,6 +944,16 @@ body {
     padding: 24px;
 }
 
+.edit-help {
+    margin: 0 0 18px;
+    padding: 10px 12px;
+    color: #495057;
+    background: #fff3e8;
+    border-left: 4px solid #ff8c42;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
 .edit-sections {
     display: grid;
     grid-template-columns: 1fr 1fr;

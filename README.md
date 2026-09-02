@@ -29,6 +29,12 @@ Depois acesse:
 http://localhost:8000
 ```
 
+Para executar os testes automatizados:
+
+```powershell
+npm test
+```
+
 Tambem funciona com qualquer servidor estatico local. O importante e acessar por `http://`, porque os arquivos JavaScript estao separados em modulos.
 
 ## Estrutura do projeto
@@ -48,6 +54,7 @@ miner-coffee/
     banner.js
     dates.js
     defaults.js
+    group-edits.js
     groups-view.js
     groups.js
     history.js
@@ -66,6 +73,7 @@ Responsabilidades principais:
 - `src/app.js`: coordena o estado e os eventos da aplicacao.
 - `src/participants.js`: regras simples e renderizacao dos participantes.
 - `src/groups.js`: regra de geracao dos grupos e historico.
+- `src/group-edits.js`: troca consistente de integrantes entre duas datas.
 - `src/groups-view.js`: renderizacao dos grupos, edicao e visualizacao compacta.
 - `src/history.js`: listagem e visualizacao dos grupos de meses anteriores.
 - `src/storage.js`: leitura e gravacao no navegador.

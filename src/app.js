@@ -1,6 +1,7 @@
 import { downloadMonthBanner } from './banner.js';
 import { downloadBackup, readBackupFile } from './backup.js';
 import { getFridaysInMonth, getReadableMonth } from './dates.js';
+import { swapGroupMember } from './group-edits.js';
 import { generateMonthGroups, getMonthKey } from './groups.js';
 import {
     clearGroupsDisplay,
@@ -243,13 +244,24 @@ class ModernLanchinhoMiner {
     }
 
     saveGroupEdit(weekIndex, groupIndex, newMembers) {
-        this.currentWeekGroups[weekIndex].groups[groupIndex] = newMembers;
+        try {
+            this.currentWeekGroups = swapGroupMember({
+                weekGroups: this.currentWeekGroups,
+                weekIndex,
+                groupIndex,
+                newMembers
+            });
+        } catch (error) {
+            alert(error.message || 'Nao foi possivel trocar os integrantes.');
+            return false;
+        }
 
         const savedMonth = this.state.months[this.getCurrentMonthKey()];
         if (savedMonth) savedMonth.weekGroups = this.currentWeekGroups;
 
         this.persistState();
         renderGroups(this.currentWeekGroups);
+        return true;
     }
 
     openCompactView() {

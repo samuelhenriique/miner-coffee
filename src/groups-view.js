@@ -62,6 +62,7 @@ export function showGroupEditModal({ date, currentMembers, availablePeople, onSa
                 <button class="close-modal" data-modal-close type="button">x</button>
             </div>
             <div class="modal-body">
+                <p class="edit-help">Remova uma pessoa e adicione outra. Ao salvar, elas trocarao de datas.</p>
                 <div class="edit-sections">
                     <div class="current-members">
                         <h4>Membros do grupo</h4>
@@ -116,8 +117,8 @@ export function showGroupEditModal({ date, currentMembers, availablePeople, onSa
                 return;
             }
 
-            onSave([...members]);
-            modal.remove();
+            const wasSaved = onSave([...members]);
+            if (wasSaved !== false) modal.remove();
         }
     });
 
