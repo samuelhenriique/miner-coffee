@@ -8,29 +8,30 @@ export function gerarGruposDoMes({ mes, pessoas, tamanhoGrupo, mesesSalvos }) {
     const [ano, numeroMes] = mes.split('-').map(Number);
     const sextas = obterSextasDoMes(ano, numeroMes);
     const tamanhos = distribuirPessoasExtras(pessoas.length, sextas.length, tamanhoGrupo);
-    const semanas = [];
     const historico = { ...mesesSalvos };
 
     delete historico[criarChaveDoMes(mes, tamanhoGrupo)];
 
-    sextas.forEach((sexta, indice) => {
-        const data = dataParaISO(sexta);
-        const grupo = criarGrupo({
-            data,
-            pessoas,
-            tamanho: tamanhos[indice],
-            semanasEmCriacao: semanas,
-            mesesSalvos: historico
-        });
+    const totalDeVagas = tamanhos.reduce((total, tamanho) => total + tamanho, 0);
+    const fila = criarFilaDeParticipacao({
+        mes,
+        pessoas,
+        totalDeVagas,
+        mesesSalvos: historico
+    });
+    let inicioDoGrupo = 0;
 
-        semanas.push({
-            date: data,
+    return sextas.map((sexta, indice) => {
+        const fimDoGrupo = inicioDoGrupo + tamanhos[indice];
+        const grupo = fila.slice(inicioDoGrupo, fimDoGrupo);
+        inicioDoGrupo = fimDoGrupo;
+
+        return {
+            date: dataParaISO(sexta),
             weekNumber: indice + 1,
             groups: [grupo]
-        });
+        };
     });
-
-    return semanas;
 }
 
 export function trocarIntegrante({ semanas, indiceSemana, indiceGrupo, novosMembros }) {
@@ -70,31 +71,20 @@ export function trocarIntegrante({ semanas, indiceSemana, indiceGrupo, novosMemb
     return semanasAtualizadas;
 }
 
-function criarGrupo({ data, pessoas, tamanho, semanasEmCriacao, mesesSalvos }) {
-    const ultimasDuasSemanas = obterParticipantesRecentes(data, 2, semanasEmCriacao, mesesSalvos);
-    let candidatos = pessoas.filter(pessoa => !ultimasDuasSemanas.has(pessoa));
-
-    if (candidatos.length < tamanho) {
-        const ultimaSemana = obterParticipantesRecentes(data, 1, semanasEmCriacao, mesesSalvos);
-        candidatos = pessoas.filter(pessoa => !ultimaSemana.has(pessoa));
-    }
-
-    if (candidatos.length < tamanho) candidatos = pessoas;
-
-    const participacoes = obterHistorico(data, pessoas, semanasEmCriacao, mesesSalvos);
-    const participantesDoMes = new Set(semanasEmCriacao.flatMap(semana => semana.groups.flat()));
-
-    return embaralhar(candidatos)
+function criarFilaDeParticipacao({ mes, pessoas, totalDeVagas, mesesSalvos }) {
+    const participacoes = obterHistorico(`${mes}-01`, pessoas, [], mesesSalvos);
+    const ordem = embaralhar(pessoas)
         .sort((a, b) => {
-            const diferencaNoMes = Number(participantesDoMes.has(a)) - Number(participantesDoMes.has(b));
-            if (diferencaNoMes !== 0) return diferencaNoMes;
-
             const diferencaTotal = participacoes.quantidades[a] - participacoes.quantidades[b];
             if (diferencaTotal !== 0) return diferencaTotal;
 
             return participacoes.ultimasDatas[a].localeCompare(participacoes.ultimasDatas[b]);
-        })
-        .slice(0, tamanho);
+        });
+
+    return Array.from(
+        { length: totalDeVagas },
+        (_, indice) => ordem[indice % ordem.length]
+    );
 }
 
 function distribuirPessoasExtras(totalPessoas, totalSemanas, tamanhoBase) {
@@ -108,15 +98,6 @@ function distribuirPessoasExtras(totalPessoas, totalSemanas, tamanhoBase) {
     }
 
     return tamanhos;
-}
-
-function obterParticipantesRecentes(data, quantidadeSemanas, semanasEmCriacao, mesesSalvos) {
-    const semanasRecentes = juntarSemanas(semanasEmCriacao, mesesSalvos)
-        .filter(semana => semana.date < data)
-        .sort((a, b) => b.date.localeCompare(a.date))
-        .slice(0, quantidadeSemanas);
-
-    return new Set(semanasRecentes.flatMap(semana => semana.groups.flat()));
 }
 
 function obterHistorico(data, pessoas, semanasEmCriacao, mesesSalvos) {

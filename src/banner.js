@@ -3,7 +3,7 @@ import { formatarData, nomeDoMes } from './datas.js';
 export function baixarBannerDoMes({ semanas, mes }) {
     const canvas = document.createElement('canvas');
     const width = 1080;
-    const height = 1350;
+    const height = calcularAlturaDoBanner(semanas);
     const ctx = canvas.getContext('2d');
 
     canvas.width = width;
@@ -73,6 +73,16 @@ export function baixarBannerDoMes({ semanas, mes }) {
     link.download = `lanchinho-miner-${mes}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
+}
+
+export function calcularAlturaDoBanner(semanas) {
+    const quantidadeDeGrupos = semanas.reduce(
+        (total, semana) => total + semana.groups.length,
+        0
+    );
+    const alturaDoConteudo = 285 + (semanas.length * 90) + (quantidadeDeGrupos * 146);
+
+    return Math.max(1350, alturaDoConteudo + 90);
 }
 
 function desenharRetanguloArredondado(ctx, x, y, width, height, radius) {

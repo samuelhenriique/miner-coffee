@@ -24,6 +24,29 @@ test('inclui 14 pessoas distribuindo as extras nos dois ultimos grupos', () => {
     assert.equal(new Set(semanas.flatMap(semana => semana.groups.flat())).size, 14);
 });
 
+test('percorre todos antes de repetir em um mes com cinco sextas-feiras', () => {
+    const pessoas = Array.from({ length: 11 }, (_, indice) => `Pessoa ${indice + 1}`);
+    const semanas = gerarGruposDoMes({
+        mes: '2026-10',
+        pessoas,
+        tamanhoGrupo: 3,
+        mesesSalvos: {}
+    });
+    const fila = semanas.flatMap(semana => semana.groups.flat());
+
+    assert.equal(fila.length, 15);
+    assert.equal(new Set(fila.slice(0, pessoas.length)).size, pessoas.length);
+    assert.deepEqual(fila.slice(pessoas.length), fila.slice(0, 4));
+
+    fila.slice(pessoas.length).forEach(pessoa => {
+        const participacoes = fila
+            .map((integrante, indice) => integrante === pessoa ? indice : -1)
+            .filter(indice => indice >= 0);
+
+        assert.equal(participacoes[1] - participacoes[0], pessoas.length);
+    });
+});
+
 test('troca os integrantes entre duas datas', () => {
     const semanas = trocarIntegrante({
         semanas: criarSemanas(),

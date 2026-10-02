@@ -6,13 +6,14 @@ const PARTICIPANTES_PADRAO = [
     'Anderson Mazzuchello',
     'Diego',
     'Gustavo Matos',
-    'Gustavo Gross',
+    //'Gustavo Gross',
     'Iza',
     'Julia',
     'Bruno',
     'Alessandro',
     'Luquinha',
-    'Greice'
+    'Pedro'
+    //'Greice'
 ];
 
 export function carregarEstado() {
